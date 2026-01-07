@@ -1,0 +1,30 @@
+name: My_wallet_manager_backend
+
+services:
+  backend:
+    build: .
+    container_name: django_backend
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: my_wlt_mgr_db
+      POSTGRES_USER: my_wlt_mgr_user
+      POSTGRES_PASSWORD: my_wlt_mgr_pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:
