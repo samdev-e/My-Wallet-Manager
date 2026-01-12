@@ -10,10 +10,10 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
 
   const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/', icon: Wallet, label: 'Accounts' },
-    { to: '/', icon: Tag, label: 'Categories' },
-    { to: '/', icon: ArrowLeftRight, label: 'Transactions' },
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/accounts', icon: Wallet, label: 'Accounts' },
+    { to: '/categories', icon: Tag, label: 'Categories' },
+    { to: '/transactions', icon: ArrowLeftRight, label: 'Transactions' },
   ];
 
   return (
