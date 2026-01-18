@@ -75,7 +75,7 @@ class AccountViewSet(BaseUserOwnedViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
 @extend_schema(
-    tags=["Cartegories"],
+    tags=["Categories"],
     summary="Categories",
     description="Manage transaction categories",
     parameters=[
