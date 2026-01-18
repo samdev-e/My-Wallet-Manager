@@ -145,34 +145,14 @@ class TransactionViewSet(BaseUserOwnedViewSet):
 
     # --- automatic balance updates ---
     def perform_create(self, serializer):
-        """When creating a transaction, update account balance."""
-        from rest_framework.exceptions import ValidationError
-        
-        # Validate that category type matches transaction type
-        transaction_type = serializer.validated_data.get('type')
-        category = serializer.validated_data.get('category')
-        
-        # Ensure category belongs to current user
-        if category.user != self.request.user:
-            raise ValidationError(
-                {"category": "Category does not belong to the current user."}
-            )
-        
-        if transaction_type == 'income' and category.type != 'income':
-            raise ValidationError(
-                {"category": "For income transactions, only income categories are allowed."}
-            )
-        
-        if transaction_type == 'expense' and category.type != 'expense':
-            raise ValidationError(
-                {"category": "For expense transactions, only expense categories are allowed."}
-            )
+        self.__validate_category(serializer)
         
         with db_transaction.atomic():
             trans = serializer.save(user=self.request.user)
             self._apply_balance_change(trans, add=True)
 
     def perform_update(self, serializer):
+        self.__validate_category(serializer)
         """When updating, revert old effect and apply the new one."""
         with db_transaction.atomic():
             old_trans = Transaction.objects.get(pk=self.get_object().pk)
@@ -188,7 +168,24 @@ class TransactionViewSet(BaseUserOwnedViewSet):
             self._apply_balance_change(instance, add=False)
             instance.delete()
 
-    # helper function
+    # helper functions
+    def __validate_category(self, serializer):
+        """Ensure category type matches transaction type."""
+        from rest_framework.exceptions import ValidationError
+
+        transaction_type = serializer.validated_data.get('type')
+        category = serializer.validated_data.get('category')
+
+        if transaction_type == 'income' and category.type != 'income':
+            raise ValidationError(
+                {"category": "For income transactions, only income categories are allowed."}
+            )
+
+        if transaction_type == 'expense' and category.type != 'expense':
+            raise ValidationError(
+                {"category": "For expense transactions, only expense categories are allowed."}
+            )
+
     def _apply_balance_change(self, trans, add=True):
         """
         Updates the linked account's balance based on transaction type.
