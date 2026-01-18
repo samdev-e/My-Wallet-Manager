@@ -6,3 +6,4 @@ python-dotenv
 python-decouple
 django-filter
 django-cors-headers
+drf-spectacular
