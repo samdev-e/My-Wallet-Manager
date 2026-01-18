@@ -53,7 +53,21 @@ class BaseUserOwnedViewSet(viewsets.ModelViewSet):
 @extend_schema(
     tags=["Accounts"],
     summary="Accounts",
-    description="Manage user accounts and balances"
+    description="Manage user accounts and balances",
+    parameters=[
+        OpenApiParameter(
+            name="page",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Page number for pagination",
+        ),
+        OpenApiParameter(
+            name="page_size",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Number of results per page (max 100, default 10)",
+        ),
+    ],
 )
 class AccountViewSet(BaseUserOwnedViewSet):
     queryset = Account.objects.all()
@@ -63,7 +77,21 @@ class AccountViewSet(BaseUserOwnedViewSet):
 @extend_schema(
     tags=["Cartegories"],
     summary="Categories",
-    description="Manage transaction categories"
+    description="Manage transaction categories",
+    parameters=[
+        OpenApiParameter(
+            name="page",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Page number for pagination",
+        ),
+        OpenApiParameter(
+            name="page_size",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Number of results per page (max 100, default 10)",
+        ),
+    ],
 )
 class CategoryViewSet(BaseUserOwnedViewSet):
     queryset = Category.objects.all()
@@ -89,6 +117,18 @@ class CategoryViewSet(BaseUserOwnedViewSet):
     - Expense transactions decrease account balance
     """,
     parameters=[
+        OpenApiParameter(
+            name="page",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Page number for pagination",
+        ),
+        OpenApiParameter(
+            name="page_size",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Number of results per page (max 100, default 10)",
+        ),
         OpenApiParameter(
             name="type",
             type=OpenApiTypes.STR,

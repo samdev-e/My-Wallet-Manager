@@ -88,6 +88,41 @@
                     }
                 }
             },
+            "PaginatedResponse": {
+                "type": "object",
+                "properties": {
+                    "total_items": {
+                        "type": "integer",
+                        "description": "Total number of items across all pages"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "description": "Total number of pages"
+                    },
+                    "current_page": {
+                        "type": "integer",
+                        "description": "Current page number"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "description": "Number of items per page"
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "URL to next page (null if last page)"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "URL to previous page (null if first page)"
+                    },
+                    "results": {
+                        "type": "array",
+                        "description": "Array of items for current page"
+                    }
+                }
+            },
             "Transaction": {
                 "type": "object",
                 "properties": {
@@ -209,16 +244,48 @@
         "/api/accounts/": {
             "get": {
                 "summary": "List accounts",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Page number for pagination"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "default": 10
+                        },
+                        "description": "Number of results per page (max 100, default 10)"
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "List of accounts",
+                        "description": "Paginated list of accounts",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Account"
-                                    }
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/PaginatedResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "results": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Account"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -247,16 +314,48 @@
         "/api/categories/": {
             "get": {
                 "summary": "List categories",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Page number for pagination"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "default": 10
+                        },
+                        "description": "Number of results per page (max 100, default 10)"
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "List of categories",
+                        "description": "Paginated list of categories",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Category"
-                                    }
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/PaginatedResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "results": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Category"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -275,27 +374,50 @@
         "/api/transactions/": {
             "get": {
                 "summary": "List transactions",
+                "description": "Get paginated list of transactions with optional filtering, searching, and ordering",
                 "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Page number for pagination"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "default": 10
+                        },
+                        "description": "Number of results per page (max 100, default 10)"
+                    },
                     {
                         "name": "type",
                         "in": "query",
                         "schema": {
-                            "type": "string"
-                        }
+                            "type": "string",
+                            "enum": ["income", "expense"]
+                        },
+                        "description": "Filter by transaction type"
                     },
                     {
                         "name": "account",
                         "in": "query",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Filter by account ID"
                     },
                     {
                         "name": "category",
                         "in": "query",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Filter by category ID"
                     },
                     {
                         "name": "start_date",
@@ -303,7 +425,8 @@
                         "schema": {
                             "type": "string",
                             "format": "date"
-                        }
+                        },
+                        "description": "Filter transactions from this date (YYYY-MM-DD)"
                     },
                     {
                         "name": "end_date",
@@ -311,33 +434,49 @@
                         "schema": {
                             "type": "string",
                             "format": "date"
-                        }
+                        },
+                        "description": "Filter transactions until this date (YYYY-MM-DD)"
                     },
                     {
                         "name": "search",
                         "in": "query",
                         "schema": {
                             "type": "string"
-                        }
+                        },
+                        "description": "Search in note and description fields (case-insensitive)"
                     },
                     {
                         "name": "ordering",
                         "in": "query",
                         "schema": {
-                            "type": "string"
-                        }
+                            "type": "string",
+                            "enum": ["date", "-date", "amount", "-amount", "created_at", "-created_at"]
+                        },
+                        "description": "Order results by field (prefix with - for descending). Default: -date"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Filtered list of transactions",
+                        "description": "Paginated and filtered list of transactions",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Transaction"
-                                    }
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/PaginatedResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "results": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Transaction"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
                                 }
                             }
                         }
