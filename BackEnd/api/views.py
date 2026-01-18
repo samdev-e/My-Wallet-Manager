@@ -4,6 +4,9 @@ from django.db import transaction as db_transaction  # for atomic operations
 from .models import Account, Category, Transaction
 from .serializers import AccountSerializer, CategorySerializer, TransactionSerializer
 from .filters import TransactionFilter
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+
 
 
 # region tests only remove
@@ -47,19 +50,74 @@ class BaseUserOwnedViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-
+@extend_schema(
+    tags=["Accounts"],
+    summary="Accounts",
+    description="Manage user accounts and balances"
+)
 class AccountViewSet(BaseUserOwnedViewSet):
     queryset = Account.objects.all()
     serializer_class = AccountSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-
+@extend_schema(
+    tags=["Cartegories"],
+    summary="Categories",
+    description="Manage transaction categories"
+)
 class CategoryViewSet(BaseUserOwnedViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
+@extend_schema(
+    tags=["Transactions"],
+    parameters=[
+        OpenApiParameter(
+            name="type",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Transaction type (income or expense)",
+        ),
+        OpenApiParameter(
+            name="account",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Filter by account ID",
+        ),
+        OpenApiParameter(
+            name="category",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Filter by category ID",
+        ),
+        OpenApiParameter(
+            name="start_date",
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        OpenApiParameter(
+            name="end_date",
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            description="End date (YYYY-MM-DD)",
+        ),
+        OpenApiParameter(
+            name="search",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Search in note and description",
+        ),
+        OpenApiParameter(
+            name="ordering",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Order by date, amount, created_at (prefix with - for desc)",
+        ),
+    ],
+)
 class TransactionViewSet(BaseUserOwnedViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
