@@ -2,13 +2,18 @@
     "openapi": "3.0.3",
     "info": {
         "title": "My Wallet Manager API",
-        "description": "REST API for managing user accounts, categories, and financial transactions. Authentication is handled via JWT Bearer tokens.",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "description": "REST API for managing user accounts, categories, and financial transactions. Authentication is handled via JWT Bearer tokens."
     },
     "servers": [
         {
             "url": "http://localhost:8000",
             "description": "Local development server"
+        }
+    ],
+    "security": [
+        {
+            "bearerAuth": []
         }
     ],
     "components": {
@@ -22,6 +27,10 @@
         "schemas": {
             "TokenObtain": {
                 "type": "object",
+                "required": [
+                    "username",
+                    "password"
+                ],
                 "properties": {
                     "username": {
                         "type": "string"
@@ -29,11 +38,7 @@
                     "password": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "username",
-                    "password"
-                ]
+                }
             },
             "TokenResponse": {
                 "type": "object",
@@ -78,6 +83,13 @@
                     "name": {
                         "type": "string"
                     },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "income",
+                            "expense"
+                        ]
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time"
@@ -88,62 +100,32 @@
                     }
                 }
             },
-            "PaginatedResponse": {
-                "type": "object",
-                "properties": {
-                    "total_items": {
-                        "type": "integer",
-                        "description": "Total number of items across all pages"
-                    },
-                    "total_pages": {
-                        "type": "integer",
-                        "description": "Total number of pages"
-                    },
-                    "current_page": {
-                        "type": "integer",
-                        "description": "Current page number"
-                    },
-                    "page_size": {
-                        "type": "integer",
-                        "description": "Number of items per page"
-                    },
-                    "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "description": "URL to next page (null if last page)"
-                    },
-                    "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "description": "URL to previous page (null if first page)"
-                    },
-                    "results": {
-                        "type": "array",
-                        "description": "Array of items for current page"
-                    }
-                }
-            },
             "Transaction": {
                 "type": "object",
+                "required": [
+                    "type",
+                    "account",
+                    "category",
+                    "amount",
+                    "date"
+                ],
                 "properties": {
                     "id": {
                         "type": "integer"
                     },
                     "type": {
                         "type": "string",
-                        "description": "Transaction type",
                         "enum": [
                             "income",
                             "expense"
                         ]
                     },
                     "account": {
-                        "type": "integer",
-                        "description": "Account ID"
+                        "type": "integer"
                     },
                     "category": {
                         "type": "integer",
-                        "description": "Category ID. Must be owned by the authenticated user and have the same type as the transaction (income category for income transactions, expense category for expense transactions)"
+                        "description": "Must belong to the authenticated user and match transaction type"
                     },
                     "amount": {
                         "type": "number",
@@ -169,22 +151,35 @@
                         "type": "string",
                         "format": "date-time"
                     }
-                },
-                "required": [
-                    "type",
-                    "account",
-                    "category",
-                    "amount",
-                    "date"
-                ]
+                }
+            },
+            "PaginatedResponse": {
+                "type": "object",
+                "properties": {
+                    "total_items": {
+                        "type": "integer"
+                    },
+                    "total_pages": {
+                        "type": "integer"
+                    },
+                    "current_page": {
+                        "type": "integer"
+                    },
+                    "page_size": {
+                        "type": "integer"
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
             }
         }
     },
-    "security": [
-        {
-            "bearerAuth": []
-        }
-    ],
     "paths": {
         "/api/token/": {
             "post": {
@@ -201,7 +196,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "JWT access and refresh tokens",
+                        "description": "JWT tokens",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -215,21 +210,21 @@
         },
         "/api/token/refresh/": {
             "post": {
-                "summary": "Refresh JWT access token",
+                "summary": "Refresh access token",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "type": "object",
+                                "required": [
+                                    "refresh"
+                                ],
                                 "properties": {
                                     "refresh": {
                                         "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "refresh"
-                                ]
+                                }
                             }
                         }
                     }
@@ -241,183 +236,50 @@
                 }
             }
         },
-        "/api/accounts/": {
-            "get": {
-                "summary": "List accounts",
-                "parameters": [
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
-                        },
-                        "description": "Page number for pagination"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "maximum": 100,
-                            "default": 10
-                        },
-                        "description": "Number of results per page (max 100, default 10)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Paginated list of accounts",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        {
-                                            "$ref": "#/components/schemas/PaginatedResponse"
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "results": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "$ref": "#/components/schemas/Account"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "summary": "Create account",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Account"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Account created"
-                    }
-                }
-            }
-        },
-        "/api/categories/": {
-            "get": {
-                "summary": "List categories",
-                "parameters": [
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer"
-                        },
-                        "description": "Page number for pagination"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "maximum": 100,
-                            "default": 10
-                        },
-                        "description": "Number of results per page (max 100, default 10)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Paginated list of categories",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        {
-                                            "$ref": "#/components/schemas/PaginatedResponse"
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "results": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "$ref": "#/components/schemas/Category"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "summary": "Create category",
-                "responses": {
-                    "201": {
-                        "description": "Category created"
-                    }
-                }
-            }
-        },
         "/api/transactions/": {
             "get": {
                 "summary": "List transactions",
-                "description": "Get paginated list of transactions with optional filtering, searching, and ordering",
+                "description": "Paginated list with filtering, searching, and ordering.",
                 "parameters": [
                     {
                         "name": "page",
                         "in": "query",
                         "schema": {
                             "type": "integer"
-                        },
-                        "description": "Page number for pagination"
+                        }
                     },
                     {
                         "name": "page_size",
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "maximum": 100,
-                            "default": 10
-                        },
-                        "description": "Number of results per page (max 100, default 10)"
+                            "maximum": 100
+                        }
                     },
                     {
                         "name": "type",
                         "in": "query",
                         "schema": {
                             "type": "string",
-                            "enum": ["income", "expense"]
-                        },
-                        "description": "Filter by transaction type"
+                            "enum": [
+                                "income",
+                                "expense"
+                            ]
+                        }
                     },
                     {
                         "name": "account",
                         "in": "query",
                         "schema": {
                             "type": "integer"
-                        },
-                        "description": "Filter by account ID"
+                        }
                     },
                     {
                         "name": "category",
                         "in": "query",
                         "schema": {
                             "type": "integer"
-                        },
-                        "description": "Filter by category ID"
+                        }
                     },
                     {
                         "name": "start_date",
@@ -425,8 +287,7 @@
                         "schema": {
                             "type": "string",
                             "format": "date"
-                        },
-                        "description": "Filter transactions from this date (YYYY-MM-DD)"
+                        }
                     },
                     {
                         "name": "end_date",
@@ -434,30 +295,26 @@
                         "schema": {
                             "type": "string",
                             "format": "date"
-                        },
-                        "description": "Filter transactions until this date (YYYY-MM-DD)"
+                        }
                     },
                     {
                         "name": "search",
                         "in": "query",
                         "schema": {
                             "type": "string"
-                        },
-                        "description": "Search in note and description fields (case-insensitive)"
+                        }
                     },
                     {
                         "name": "ordering",
                         "in": "query",
                         "schema": {
-                            "type": "string",
-                            "enum": ["date", "-date", "amount", "-amount", "created_at", "-created_at"]
-                        },
-                        "description": "Order results by field (prefix with - for descending). Default: -date"
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Paginated and filtered list of transactions",
+                        "description": "Paginated transactions",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -477,44 +334,6 @@
                                             }
                                         }
                                     ]
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "summary": "Create transaction",
-                "description": "Create a new transaction. Automatically updates the linked account balance. Category must be owned by the user and have the same type as the transaction.",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Transaction"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Transaction created successfully"
-                    },
-                    "400": {
-                        "description": "Validation error - category type does not match transaction type or category not owned by user",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "category": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            },
-                                            "example": ["For income transactions, only income categories are allowed."]
-                                        }
-                                    }
                                 }
                             }
                         }
