@@ -73,6 +73,21 @@ class CategoryViewSet(BaseUserOwnedViewSet):
 
 @extend_schema(
     tags=["Transactions"],
+    summary="Transactions",
+    description="""Manage financial transactions with automatic balance updates.
+    
+    **Important Validation Rules:**
+    - Categories must be owned by the authenticated user
+    - Category type MUST match transaction type:
+      - Income transactions require income categories
+      - Expense transactions require expense categories
+    - Violating these rules will return a 400 Bad Request error
+    
+    **Automatic Balance Updates:**
+    - Creating/updating/deleting transactions automatically updates the linked account balance
+    - Income transactions increase account balance
+    - Expense transactions decrease account balance
+    """,
     parameters=[
         OpenApiParameter(
             name="type",
@@ -170,11 +185,17 @@ class TransactionViewSet(BaseUserOwnedViewSet):
 
     # helper functions
     def __validate_category(self, serializer):
-        """Ensure category type matches transaction type."""
+        """Ensure category type matches transaction type and belongs to current user."""
         from rest_framework.exceptions import ValidationError
 
         transaction_type = serializer.validated_data.get('type')
         category = serializer.validated_data.get('category')
+
+        # Check if category belongs to the current user
+        if category.user != self.request.user:
+            raise ValidationError(
+                {"category": "Category not found"}
+            )
 
         if transaction_type == 'income' and category.type != 'income':
             raise ValidationError(

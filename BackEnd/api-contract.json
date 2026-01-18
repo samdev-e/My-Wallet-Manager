@@ -108,7 +108,7 @@
                     },
                     "category": {
                         "type": "integer",
-                        "description": "Category ID"
+                        "description": "Category ID. Must be owned by the authenticated user and have the same type as the transaction (income category for income transactions, expense category for expense transactions)"
                     },
                     "amount": {
                         "type": "number",
@@ -346,6 +346,7 @@
             },
             "post": {
                 "summary": "Create transaction",
+                "description": "Create a new transaction. Automatically updates the linked account balance. Category must be owned by the user and have the same type as the transaction.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -358,7 +359,26 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Transaction created"
+                        "description": "Transaction created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error - category type does not match transaction type or category not owned by user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "category": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "example": ["For income transactions, only income categories are allowed."]
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
