@@ -53,7 +53,21 @@ class BaseUserOwnedViewSet(viewsets.ModelViewSet):
 @extend_schema(
     tags=["Accounts"],
     summary="Accounts",
-    description="Manage user accounts and balances"
+    description="Manage user accounts and balances",
+    parameters=[
+        OpenApiParameter(
+            name="page",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Page number for pagination",
+        ),
+        OpenApiParameter(
+            name="page_size",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Number of results per page (max 100, default 10)",
+        ),
+    ],
 )
 class AccountViewSet(BaseUserOwnedViewSet):
     queryset = Account.objects.all()
@@ -61,9 +75,23 @@ class AccountViewSet(BaseUserOwnedViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
 @extend_schema(
-    tags=["Cartegories"],
+    tags=["Categories"],
     summary="Categories",
-    description="Manage transaction categories"
+    description="Manage transaction categories",
+    parameters=[
+        OpenApiParameter(
+            name="page",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Page number for pagination",
+        ),
+        OpenApiParameter(
+            name="page_size",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Number of results per page (max 100, default 10)",
+        ),
+    ],
 )
 class CategoryViewSet(BaseUserOwnedViewSet):
     queryset = Category.objects.all()
@@ -73,7 +101,34 @@ class CategoryViewSet(BaseUserOwnedViewSet):
 
 @extend_schema(
     tags=["Transactions"],
+    summary="Transactions",
+    description="""Manage financial transactions with automatic balance updates.
+    
+    **Important Validation Rules:**
+    - Categories must be owned by the authenticated user
+    - Category type MUST match transaction type:
+      - Income transactions require income categories
+      - Expense transactions require expense categories
+    - Violating these rules will return a 400 Bad Request error
+    
+    **Automatic Balance Updates:**
+    - Creating/updating/deleting transactions automatically updates the linked account balance
+    - Income transactions increase account balance
+    - Expense transactions decrease account balance
+    """,
     parameters=[
+        OpenApiParameter(
+            name="page",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Page number for pagination",
+        ),
+        OpenApiParameter(
+            name="page_size",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Number of results per page (max 100, default 10)",
+        ),
         OpenApiParameter(
             name="type",
             type=OpenApiTypes.STR,
@@ -145,12 +200,14 @@ class TransactionViewSet(BaseUserOwnedViewSet):
 
     # --- automatic balance updates ---
     def perform_create(self, serializer):
-        """When creating a transaction, update account balance."""
+        self.__validate_category(serializer)
+        
         with db_transaction.atomic():
             trans = serializer.save(user=self.request.user)
             self._apply_balance_change(trans, add=True)
 
     def perform_update(self, serializer):
+        self.__validate_category(serializer)
         """When updating, revert old effect and apply the new one."""
         with db_transaction.atomic():
             old_trans = Transaction.objects.get(pk=self.get_object().pk)
@@ -166,7 +223,30 @@ class TransactionViewSet(BaseUserOwnedViewSet):
             self._apply_balance_change(instance, add=False)
             instance.delete()
 
-    # helper function
+    # helper functions
+    def __validate_category(self, serializer):
+        """Ensure category type matches transaction type and belongs to current user."""
+        from rest_framework.exceptions import ValidationError
+
+        transaction_type = serializer.validated_data.get('type')
+        category = serializer.validated_data.get('category')
+
+        # Check if category belongs to the current user
+        if category.user != self.request.user:
+            raise ValidationError(
+                {"category": "Category not found"}
+            )
+
+        if transaction_type == 'income' and category.type != 'income':
+            raise ValidationError(
+                {"category": "For income transactions, only income categories are allowed."}
+            )
+
+        if transaction_type == 'expense' and category.type != 'expense':
+            raise ValidationError(
+                {"category": "For expense transactions, only expense categories are allowed."}
+            )
+
     def _apply_balance_change(self, trans, add=True):
         """
         Updates the linked account's balance based on transaction type.
