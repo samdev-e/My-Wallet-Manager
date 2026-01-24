@@ -7,3 +7,4 @@ python-decouple
 django-filter
 django-cors-headers
 drf-spectacular
+django-cors-headers
